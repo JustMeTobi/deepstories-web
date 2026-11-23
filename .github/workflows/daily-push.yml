@@ -1,0 +1,35 @@
+name: Daily notification
+
+on:
+  schedule:
+    # Every hour at :17. The script only sends during PUSH_HOUR in PUSH_TIMEZONE,
+    # which keeps the time right through daylight-saving changes.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Send now, ignoring the hour'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: push
+      - run: node push/send.mjs
+        env:
+          PUSH_SUBSCRIPTION: ${{ secrets.PUSH_SUBSCRIPTION }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_HOUR: ${{ vars.PUSH_HOUR }}
+          PUSH_TIMEZONE: ${{ vars.PUSH_TIMEZONE }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
